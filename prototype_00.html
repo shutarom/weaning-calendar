@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>離乳食カレンダー（プロトタイプ）</title>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: #12141b;
+      --panel2: #171a24;
+      --text: #e8e8ea;
+      --muted: #a7a7ad;
+      --accent: #7dd3fc;
+      --ok: #86efac;
+      --warn: #fde68a;
+      --bad: #fca5a5;
+      --border: #24283a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: linear-gradient(180deg, #07080b, #0b0c10);
+      color: var(--text);
+    }
+    header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(18,20,27,0.8);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0 0 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.02em; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .control {
+      display: flex; gap: 8px; align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+    label { color: var(--muted); font-size: 12px; }
+    input, select, button, textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      outline: none;
+    }
+    input[type="number"] { width: 90px; }
+    button {
+      cursor: pointer;
+      background: #152235;
+      border-color: #22324a;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:active { transform: translateY(1px); }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+      padding: 14px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: rgba(18,20,27,0.75);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .cardHeader {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(23,26,36,0.65);
+    }
+    .title { font-weight: 700; font-size: 14px; }
+    .sub { color: var(--muted); font-size: 12px; }
+    .cardBody { padding: 14px; }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    .dow {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 6px 0;
+    }
+    .day {
+      border: 1px solid var(--border);
+      background: rgba(18,20,27,0.65);
+      border-radius: 14px;
+      min-height: 84px;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      transition: transform 0.05s ease, filter 0.15s ease, border-color 0.15s ease;
+    }
+    .day:hover { filter: brightness(1.1); }
+    .day:active { transform: translateY(1px); }
+    .day.out { opacity: 0.45; }
+    .day.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(125,211,252,0.15); }
+    .dayNum { font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(23,26,36,0.8);
+    }
+    .dotRow { display: flex; gap: 6px; flex-wrap: wrap; }
+    .dot { width: 8px; height: 8px; border-radius: 99px; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--bad); }
+    .mealBlock { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: rgba(23,26,36,0.55); margin-bottom: 10px; }
+    .mealHeader { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .mealName { font-weight: 800; font-size: 13px; }
+    .mealTotal { color: var(--muted); font-size: 12px; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 4px 0; color: #d9d9dd; }
+    .formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    @media (max-width: 980px) {
+      .formGrid { grid-template-columns: 1fr; }
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    textarea { min-height: 72px; resize: vertical; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .pill {
+      display: inline-flex; gap: 8px; align-items: center;
+      border: 1px solid var(--border);
+      background: rgba(23,26,36,0.55);
+      padding: 8px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .footerNote { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+    .small { font-size: 12px; color: var(--muted); }
+    .danger { color: var(--bad); }
+  </style>
+</head>
+<body>
+<header>
+  <h1>離乳食カレンダー（プロトタイプ）</h1>
+  <div class="row">
+    <div class="control">
+      <label for="ageMonths">月齢</label>
+      <input id="ageMonths" type="number" min="4" max="24" step="1" value="7" />
+      <span class="small">ヶ月</span>
+    </div>
+    <div class="control">
+      <button id="prevMonthBtn">◀︎</button>
+      <div>
+        <div class="title" id="monthLabel">----</div>
+        <div class="sub" id="phaseLabel">フェーズ: -</div>
+      </div>
+      <button id="nextMonthBtn">▶︎</button>
+    </div>
+    <div class="control">
+      <button id="todayBtn">今日へ</button>
+      <button id="clearAllBtn" title="このブラウザ内の記録を全削除">記録全消し</button>
+    </div>
+    <div class="control">
+      <button id="exportBtn" title="JSONでエクスポート">エクスポート</button>
+      <button id="importBtn" title="JSONでインポート">インポート</button>
+      <input id="importFile" type="file" accept="application/json" style="display:none" />
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="card">
+    <div class="cardHeader">
+      <div>
+        <div class="title">カレンダー</div>
+        <div class="sub">日付をクリックすると詳細と入力が出ます</div>
+      </div>
+      <div class="pill" id="summaryPill">ログ: -</div>
+    </div>
+    <div class="cardBody">
+      <div class="calendar" id="calendar">
+        <!-- injected -->
+      </div>
+      <div class="footerNote">
+        ※ 量は「目安」です。現実の赤ちゃんは仕様通りに動きません。<br/>
+        ※ 医療判断やアレルギー判断はこのアプリにやらせないでください（マジで）。
+      </div>
+    </div>
+  </section>
+
+  <aside class="card">
+    <div class="cardHeader">
+      <div>
+        <div class="title" id="detailTitle">選択日: -</div>
+        <div class="sub" id="detailSub">提案と実績入力</div>
+      </div>
+      <div class="pill" id="seedPill">seed: -</div>
+    </div>
+    <div class="cardBody" id="detailBody">
+      <div class="hint">左のカレンダーから日付を選んで。</div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/**
+ * 離乳食カレンダー（プロトタイプ）
+ * - 提案: 月齢フェーズ別の基準量 + 食べ具合ログ補正
+ * - 保存: localStorage
+ * - 共有/ログイン: なし（それは次の人生で）
+ */
+
+const STORAGE_KEY = "weaning_calendar_v1";
+
+const DOW = ["日","月","火","水","木","金","土"];
+
+// 月齢フェーズ定義（ざっくり）
+function phaseFromMonths(m) {
+  if (m <= 5) return { key: "5_6", label: "初期(5-6ヶ月)" };
+  if (m <= 8) return { key: "7_8", label: "中期(7-8ヶ月)" };
+  if (m <= 11) return { key: "9_11", label: "後期(9-11ヶ月)" };
+  return { key: "12_18", label: "完了期(12-18ヶ月)" };
+}
+
+// 目安量（g）: 超ざっくりのプロトタイプ用
+// 実アプリではここに「Webリサーチで構造化したデータ」を入れる想定
+const BASE_GUIDE = {
+  "5_6": {
+    mealsPerDay: 1,
+    categories: { staple: 30, veg: 20, protein: 10 }, // 1食あたり目安
+    note: "まずは慣れる。量より継続。"
+  },
+  "7_8": {
+    mealsPerDay: 2,
+    categories: { staple: 60, veg: 40, protein: 20 },
+    note: "2回食。食材バリエ増やす。"
+  },
+  "9_11": {
+    mealsPerDay: 3,
+    categories: { staple: 80, veg: 50, protein: 30 },
+    note: "3回食。鉄・たんぱく意識。"
+  },
+  "12_18": {
+    mealsPerDay: 3,
+    categories: { staple: 100, veg: 60, protein: 40 },
+    note: "大人食へ寄せつつ無理はしない。"
+  }
+};
+
+// 食材プール（簡易）
+const FOOD = {
+  staple: ["10倍がゆ", "軟飯", "うどん(やわ)", "食パン(ふやかし)", "さつまいもマッシュ", "オートミール粥"],
+  veg: ["にんじん", "かぼちゃ", "ほうれん草", "ブロッコリー", "トマト", "大根", "玉ねぎ(よく加熱)", "さつまいも"],
+  protein: ["豆腐", "白身魚", "しらす(塩抜き)", "鶏ささみ", "ヨーグルト", "卵黄(慣れてから)", "納豆(刻む)"]
+};
+
+// 調理法テンプレ
+const COOK = [
+  "ペースト",
+  "つぶし",
+  "みじん切り＋とろみ",
+  "だし煮",
+  "蒸してやわらかく",
+  "スープ"
+];
+
+// 乱数（seed付き）: 日付で提案を安定化
+function xmur3(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function() {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  }
+}
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+function seededRand(seedStr) {
+  const seed = xmur3(seedStr)();
+  return { seed, rand: mulberry32(seed) };
+}
+function pick(arr, r) {
+  return arr[Math.floor(r * arr.length)];
+}
+
+// localStorage I/O
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { logs: {} };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return { logs: {} };
+    if (!parsed.logs) parsed.logs = {};
+    return parsed;
+  } catch {
+    return { logs: {} };
+  }
+}
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function isoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const da = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${da}`;
+}
+function parseIso(s) {
+  const [y,m,d] = s.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+
+// 直近N日ログから補正係数を作る（簡易）
+// eatenRatio: 1.0=完食, 0.5=半分, 0.0=食べず
+function calcAdjustFactor(state, endDateIso, days=7) {
+  const end = parseIso(endDateIso);
+  let sum = 0, cnt = 0;
+  for (let i=0; i<days; i++) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - i);
+    const key = isoDate(d);
+    const log = state.logs[key];
+    if (!log || !log.meals) continue;
+    // その日の全食の平均
+    for (const mealName of Object.keys(log.meals)) {
+      const m = log.meals[mealName];
+      if (typeof m.eatenRatio === "number") {
+        sum += m.eatenRatio;
+        cnt += 1;
+      }
+    }
+  }
+  if (cnt === 0) return 1.0;
+
+  const avg = sum / cnt; // 0..1
+  // 0.75を基準に、上下最大±20%で補正
+  const delta = (avg - 0.75); // -0.75..0.25
+  const factor = 1.0 + Math.max(-0.2, Math.min(0.2, delta * 0.4)); // 適当係数
+  return Math.max(0.8, Math.min(1.2, factor));
+}
+
+// 提案生成
+function generateSuggestion(dateIso, ageMonths, state) {
+  const phase = phaseFromMonths(ageMonths);
+  const guide = BASE_GUIDE[phase.key];
+  const { seed, rand } = seededRand(dateIso + "|" + phase.key);
+
+  const adj = calcAdjustFactor(state, dateIso, 7);
+
+  // 3回食になってても、初期は1回食などに合わせる
+  const meals = ["朝", "昼", "夕"];
+  const mealCount = guide.mealsPerDay;
+  const activeMeals = meals.slice(0, mealCount);
+
+  const itemsPerMeal = phase.key === "5_6" ? 2 : 3;
+
+  const mealPlans = activeMeals.map((name, idx) => {
+    const r1 = rand(), r2 = rand(), r3 = rand(), r4 = rand();
+
+    const staple = pick(FOOD.staple, r1);
+    const veg = pick(FOOD.veg, r2);
+    const protein = pick(FOOD.protein, r3);
+    const cook = pick(COOK, r4);
+
+    // 量（g）は基準×補正。食材に応じて少し揺らす
+    const wobble = 0.9 + rand() * 0.2; // 0.9..1.1
+
+    const stapleG = Math.round(guide.categories.staple * adj * wobble);
+    const vegG = Math.round(guide.categories.veg * adj * wobble);
+    const proteinG = Math.round(guide.categories.protein * adj * wobble);
+
+    const list = [];
+    list.push({ cat: "staple", text: `${staple}（${cook}）`, grams: stapleG });
+    list.push({ cat: "veg", text: `${veg}（${cook}）`, grams: vegG });
+
+    if (itemsPerMeal >= 3) {
+      list.push({ cat: "protein", text: `${protein}（${cook}）`, grams: proteinG });
+    }
+
+    const total = list.reduce((a,b)=>a+b.grams,0);
+
+    return {
+      name,
+      items: list,
+      totalGrams: total
+    };
+  });
+
+  return {
+    phase,
+    guideNote: guide.note,
+    seed,
+    adjustFactor: adj,
+    meals: mealPlans
+  };
+}
+
+// UI State
+let appState = loadState();
+let viewDate = new Date();
+let selectedIso = isoDate(new Date());
+
+// Elements
+const ageInput = document.getElementById("ageMonths");
+const prevMonthBtn = document.getElementById("prevMonthBtn");
+const nextMonthBtn = document.getElementById("nextMonthBtn");
+const todayBtn = document.getElementById("todayBtn");
+const clearAllBtn = document.getElementById("clearAllBtn");
+const monthLabel = document.getElementById("monthLabel");
+const phaseLabel = document.getElementById("phaseLabel");
+const calendarEl = document.getElementById("calendar");
+const detailTitle = document.getElementById("detailTitle");
+const detailSub = document.getElementById("detailSub");
+const detailBody = document.getElementById("detailBody");
+const seedPill = document.getElementById("seedPill");
+const summaryPill = document.getElementById("summaryPill");
+const exportBtn = document.getElementById("exportBtn");
+const importBtn = document.getElementById("importBtn");
+const importFile = document.getElementById("importFile");
+
+// Renderers
+function renderHeader() {
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth() + 1;
+  monthLabel.textContent = `${y}年 ${m}月`;
+  const ph = phaseFromMonths(Number(ageInput.value || 7));
+  phaseLabel.textContent = `フェーズ: ${ph.label}`;
+}
+
+function getMonthGrid(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const first = new Date(y, m, 1);
+  const startDow = first.getDay();
+  const start = new Date(y, m, 1 - startDow); // 日曜開始
+  const cells = [];
+  for (let i=0; i<42; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    cells.push(d);
+  }
+  return { y, m, cells };
+}
+
+function logStatusDots(dateIso) {
+  const log = appState.logs[dateIso];
+  if (!log || !log.meals) return [];
+  const ratios = Object.values(log.meals).map(m => m.eatenRatio).filter(v => typeof v === "number");
+  if (ratios.length === 0) return [];
+  const avg = ratios.reduce((a,b)=>a+b,0) / ratios.length;
+  if (avg >= 0.8) return ["ok"];
+  if (avg >= 0.4) return ["warn"];
+  return ["bad"];
+}
+
+function renderCalendar() {
+  calendarEl.innerHTML = "";
+
+  // DOW header
+  for (const d of DOW) {
+    const el = document.createElement("div");
+    el.className = "dow";
+    el.textContent = d;
+    calendarEl.appendChild(el);
+  }
+
+  const { y, m, cells } = getMonthGrid(viewDate);
+  const thisMonth = m;
+
+  let logCount = 0;
+  for (const k of Object.keys(appState.logs)) {
+    if (k.startsWith(`${y}-${String(m+1).padStart(2,"0")}-`)) logCount++;
+  }
+  summaryPill.textContent = `ログ: ${logCount}日`;
+
+  for (const d of cells) {
+    const iso = isoDate(d);
+    const isOut = d.getMonth() !== thisMonth;
+    const dots = logStatusDots(iso);
+
+    const el = document.createElement("div");
+    el.className = "day" + (isOut ? " out" : "") + (iso === selectedIso ? " selected" : "");
+    el.dataset.iso = iso;
+
+    const top = document.createElement("div");
+    top.className = "dayNum";
+    const num = document.createElement("span");
+    num.textContent = d.getDate();
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = isOut ? " " : "提案";
+    top.appendChild(num);
+    top.appendChild(badge);
+
+    const dotRow = document.createElement("div");
+    dotRow.className = "dotRow";
+    if (dots.length > 0) {
+      for (const st of dots) {
+        const dot = document.createElement("span");
+        dot.className = "dot " + st;
+        dotRow.appendChild(dot);
+      }
+      const b = document.createElement("span");
+      b.className = "badge";
+      b.textContent = "ログあり";
+      dotRow.appendChild(b);
+    } else {
+      const hint = document.createElement("span");
+      hint.className = "small";
+      hint.textContent = "（未入力）";
+      dotRow.appendChild(hint);
+    }
+
+    el.appendChild(top);
+    el.appendChild(dotRow);
+
+    el.addEventListener("click", () => {
+      selectedIso = iso;
+      renderCalendar();
+      renderDetail();
+    });
+
+    calendarEl.appendChild(el);
+  }
+}
+
+function ensureLog(dateIso) {
+  if (!appState.logs[dateIso]) {
+    appState.logs[dateIso] = { meals: {} };
+  }
+  if (!appState.logs[dateIso].meals) appState.logs[dateIso].meals = {};
+  return appState.logs[dateIso];
+}
+
+function renderDetail() {
+  const ageMonths = Number(ageInput.value || 7);
+  const sug = generateSuggestion(selectedIso, ageMonths, appState);
+
+  detailTitle.textContent = `選択日: ${selectedIso}`;
+  detailSub.textContent = `提案: ${sug.phase.label} / 補正: x${sug.adjustFactor.toFixed(2)} / ${BASE_GUIDE[sug.phase.key].note}`;
+  seedPill.textContent = `seed: ${sug.seed}`;
+
+  const log = ensureLog(selectedIso);
+
+  const wrap = document.createElement("div");
+
+  // 提案表示 + 入力
+  for (const meal of sug.meals) {
+    const block = document.createElement("div");
+    block.className = "mealBlock";
+
+    const header = document.createElement("div");
+    header.className = "mealHeader";
+    const left = document.createElement("div");
+    left.className = "mealName";
+    left.textContent = `${meal.name}`;
+    const right = document.createElement("div");
+    right.className = "mealTotal";
+    right.textContent = `目安合計: ${meal.totalGrams}g`;
+    header.appendChild(left);
+    header.appendChild(right);
+
+    const ul = document.createElement("ul");
+    for (const item of meal.items) {
+      const li = document.createElement("li");
+      li.textContent = `${item.text}：${item.grams}g`;
+      ul.appendChild(li);
+    }
+
+    const form = document.createElement("div");
+    form.className = "formGrid";
+
+    const current = log.meals[meal.name] || {};
+
+    // eatenRatio select
+    const f1 = document.createElement("div");
+    f1.className = "field";
+    const l1 = document.createElement("label");
+    l1.textContent = "食べた割合";
+    const sel = document.createElement("select");
+    const options = [
+      { v: "", t: "未入力" },
+      { v: "1", t: "完食（100%）" },
+      { v: "0.75", t: "だいたい（75%）" },
+      { v: "0.5", t: "半分（50%）" },
+      { v: "0.25", t: "少し（25%）" },
+      { v: "0", t: "食べず（0%）" },
+    ];
+    for (const o of options) {
+      const op = document.createElement("option");
+      op.value = o.v;
+      op.textContent = o.t;
+      sel.appendChild(op);
+    }
+    sel.value = (typeof current.eatenRatio === "number") ? String(current.eatenRatio) : "";
+    f1.appendChild(l1);
+    f1.appendChild(sel);
+
+    // actual grams
+    const f2 = document.createElement("div");
+    f2.className = "field";
+    const l2 = document.createElement("label");
+    l2.textContent = "実食量（合計g）";
+    const in2 = document.createElement("input");
+    in2.type = "number";
+    in2.min = "0";
+    in2.step = "1";
+    in2.placeholder = String(meal.totalGrams);
+    in2.value = (typeof current.actualGrams === "number") ? String(current.actualGrams) : "";
+    f2.appendChild(l2);
+    f2.appendChild(in2);
+
+    const f3 = document.createElement("div");
+    f3.className = "field";
+    const l3 = document.createElement("label");
+    l3.textContent = "メモ";
+    const ta = document.createElement("textarea");
+    ta.placeholder = "例）ほうれん草は顔が終わってた。";
+    ta.value = (typeof current.memo === "string") ? current.memo : "";
+    f3.appendChild(l3);
+    f3.appendChild(ta);
+
+    const f4 = document.createElement("div");
+    f4.className = "field";
+    const l4 = document.createElement("label");
+    l4.textContent = "保存";
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "この食を保存";
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "この食を削除";
+    delBtn.style.background = "#2a1a1a";
+    delBtn.style.borderColor = "#3a2222";
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(delBtn);
+    f4.appendChild(l4);
+    f4.appendChild(actions);
+
+    form.appendChild(f1);
+    form.appendChild(f2);
+    form.appendChild(f3);
+    form.appendChild(f4);
+
+    saveBtn.addEventListener("click", () => {
+      const ratio = sel.value === "" ? undefined : Number(sel.value);
+      const actual = in2.value.trim() === "" ? undefined : Number(in2.value);
+      const memo = ta.value;
+
+      const dayLog = ensureLog(selectedIso);
+      dayLog.meals[meal.name] = {
+        eatenRatio: (typeof ratio === "number" && !Number.isNaN(ratio)) ? ratio : undefined,
+        actualGrams: (typeof actual === "number" && !Number.isNaN(actual)) ? actual : undefined,
+        memo: memo || ""
+      };
+      saveState(appState);
+      renderCalendar();
+      renderDetail();
+    });
+
+    delBtn.addEventListener("click", () => {
+      const dayLog = ensureLog(selectedIso);
+      delete dayLog.meals[meal.name];
+      // 日全体が空なら削除
+      if (Object.keys(dayLog.meals).length === 0) {
+        delete appState.logs[selectedIso];
+      }
+      saveState(appState);
+      renderCalendar();
+      renderDetail();
+    });
+
+    block.appendChild(header);
+    block.appendChild(ul);
+    block.appendChild(form);
+
+    wrap.appendChild(block);
+  }
+
+  // その日全体のメモ欄（任意）
+  const dayMemo = document.createElement("div");
+  dayMemo.className = "mealBlock";
+  const dh = document.createElement("div");
+  dh.className = "mealHeader";
+  dh.innerHTML = `<div class="mealName">その日メモ</div><div class="mealTotal">任意</div>`;
+  const dayTa = document.createElement("textarea");
+  dayTa.placeholder = "例）予防接種の日で機嫌悪め、量控えめ。";
+  dayTa.value = (appState.logs[selectedIso] && appState.logs[selectedIso].dayMemo) ? appState.logs[selectedIso].dayMemo : "";
+  const dayActions = document.createElement("div");
+  dayActions.className = "actions";
+  const saveDay = document.createElement("button");
+  saveDay.textContent = "日メモ保存";
+  dayActions.appendChild(saveDay);
+
+  saveDay.addEventListener("click", () => {
+    const dayLog = ensureLog(selectedIso);
+    dayLog.dayMemo = dayTa.value || "";
+    saveState(appState);
+  });
+
+  const explain = document.createElement("div");
+  explain.className = "footerNote";
+  explain.innerHTML = `
+    <div class="small">
+      補正ロジック（雑）：直近7日ログの平均食べた割合が高いと提案量↑、低いと↓。<br/>
+      本番では「食材カテゴリ別」「食材単体」「時間帯」「体調」などで分けていく想定。
+    </div>
+  `;
+
+  dayMemo.appendChild(dh);
+  dayMemo.appendChild(dayTa);
+  dayMemo.appendChild(dayActions);
+
+  wrap.appendChild(dayMemo);
+  wrap.appendChild(explain);
+
+  detailBody.innerHTML = "";
+  detailBody.appendChild(wrap);
+}
+
+function clampMonth(d) {
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  return new Date(y, m, 1);
+}
+
+function init() {
+  viewDate = clampMonth(new Date());
+  selectedIso = isoDate(new Date());
+
+  renderHeader();
+  renderCalendar();
+  renderDetail();
+}
+
+// Events
+prevMonthBtn.addEventListener("click", () => {
+  const d = new Date(viewDate);
+  d.setMonth(viewDate.getMonth() - 1);
+  viewDate = clampMonth(d);
+  renderHeader();
+  renderCalendar();
+});
+nextMonthBtn.addEventListener("click", () => {
+  const d = new Date(viewDate);
+  d.setMonth(viewDate.getMonth() + 1);
+  viewDate = clampMonth(d);
+  renderHeader();
+  renderCalendar();
+});
+todayBtn.addEventListener("click", () => {
+  const now = new Date();
+  viewDate = clampMonth(now);
+  selectedIso = isoDate(now);
+  renderHeader();
+  renderCalendar();
+  renderDetail();
+});
+ageInput.addEventListener("change", () => {
+  renderHeader();
+  renderCalendar();
+  renderDetail();
+});
+clearAllBtn.addEventListener("click", () => {
+  const ok = confirm("このブラウザ内の記録を全削除します。後悔しない？");
+  if (!ok) return;
+  appState = { logs: {} };
+  saveState(appState);
+  renderCalendar();
+  renderDetail();
+});
+
+// エクスポート / インポート
+function exportStateToFile() {
+  try {
+    const data = JSON.stringify(appState, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const name = `weaning_export_${new Date().toISOString().slice(0,10)}.json`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(data).catch(()=>{});
+    }
+    alert('エクスポート完了（ファイルをダウンロード／クリップボードへコピー）');
+  } catch (e) {
+    alert('エクスポートに失敗しました');
+  }
+}
+
+function handleImportFile(e) {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object') throw new Error('invalid');
+      const ok = confirm('インポートすると現在のデータが置き換わります。よろしいですか？');
+      if (!ok) return;
+      appState = parsed;
+      saveState(appState);
+      renderCalendar();
+      renderDetail();
+      alert('インポート完了');
+    } catch (err) {
+      alert('JSON 読み込みエラー: ' + (err && err.message ? err.message : '不明'));
+    }
+  };
+  reader.readAsText(f);
+  importFile.value = '';
+}
+
+if (exportBtn) exportBtn.addEventListener('click', exportStateToFile);
+if (importBtn && importFile) {
+  importBtn.addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', handleImportFile);
+}
+
+init();
+</script>
+</body>
+</html>
